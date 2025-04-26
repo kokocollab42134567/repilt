@@ -1,9 +1,10 @@
-# Use an official Node.js image (with Debian slim)
+# Use an official Node.js image
 FROM node:20-slim
 
-# Install necessary dependencies for Chromium
+# Install necessary dependencies
 RUN apt-get update && apt-get install -y \
     wget \
+    gnupg \
     ca-certificates \
     fonts-liberation \
     libappindicator3-1 \
@@ -20,33 +21,29 @@ RUN apt-get update && apt-get install -y \
     libxdamage1 \
     libxrandr2 \
     xdg-utils \
-    --no-install-recommends \
-    && rm -rf /var/lib/apt/lists/*
+    --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
-# Create and set working directory
-WORKDIR /app
-
-# Copy package.json and package-lock.json (if you have)
-COPY package*.json ./
-
-# Install npm dependencies
-RUN npm install
-
-# Copy all other project files
-COPY . .
-
-# Set environment variables to disable Puppeteer warnings
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
-
-# Install Chrome manually (important because you are using puppeteer-extra)
+# Install Google Chrome stable
 RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - && \
     echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
     apt-get update && apt-get install -y google-chrome-stable && \
     rm -rf /var/lib/apt/lists/*
 
-# Expose a port (optional, if you run a server later)
-# EXPOSE 3000
+# Set working directory
+WORKDIR /app
 
-# Start your script
+# Copy package.json and package-lock.json
+COPY package*.json ./
+
+# Install app dependencies
+RUN npm install
+
+# Copy app source code
+COPY . .
+
+# Set environment variables for Puppeteer
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
+
+# Start the bot
 CMD ["node", "index.js"]
