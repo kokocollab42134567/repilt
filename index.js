@@ -1,19 +1,22 @@
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const fs = require('fs');
+const http = require('http');
 
-const COOKIE_FILE = './cookies.json'; // We'll load this
+const COOKIE_FILE = './cookies.json';
 
 puppeteer.use(StealthPlugin());
 
-(async () => {
+let browser, page;
+
+async function launchBrowser() {
   console.log('🚀 Launching browser...');
 
-  const browser = await puppeteer.connect({
+  browser = await puppeteer.connect({
     browserWSEndpoint: 'wss://production-sfo.browserless.io/?token=SCtsRZKaUy9UsBe65e9925403d452f8a0f55a8129f&proxy=residential'
   });
 
-  const page = await browser.newPage();
+  page = await browser.newPage();
 
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
 
@@ -45,7 +48,7 @@ puppeteer.use(StealthPlugin());
     }
 
     console.log('✅ Script setup complete. Keeping page open...');
-    await page.waitForSelector('body', { timeout: 0 }); // Keeps Puppeteer page open
+    await page.waitForSelector('body', { timeout: 0 });
   } catch (error) {
     console.error(`❌ Error: ${error.message}`);
     try {
@@ -57,7 +60,50 @@ puppeteer.use(StealthPlugin());
       console.error('⚠️ Failed to fetch page info for debug.');
     }
   }
-})();
+}
 
-// Prevent Node.js from exiting
+// Start the Puppeteer automation
+launchBrowser();
+
+// Create HTTP server on port 3000
+const server = http.createServer(async (req, res) => {
+  if (req.url === '/') {
+    let status = '🔴 Browser is not open';
+    if (browser && page && !browser.isClosed()) {
+      try {
+        await page.title(); // Throws if disconnected
+        status = '🟢 Browser is connected and page is alive';
+      } catch (e) {
+        status = '🟠 Browser connected but page is unresponsive';
+      }
+    }
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end(`Browser status: ${status}\n`);
+  } else {
+    res.writeHead(404);
+    res.end('Not found');
+  }
+});
+
+server.listen(3000, () => {
+  console.log('🌐 Status server running at http://localhost:3000');
+});
+
+// Self-check every 2 minutes
+setInterval(async () => {
+  let message = '[⏱ 2-min Check] ';
+  if (browser && page && !browser.isClosed()) {
+    try {
+      await page.title();
+      message += '🟢 Browser/page alive.';
+    } catch (e) {
+      message += '🟠 Browser connected but page unresponsive.';
+    }
+  } else {
+    message += '🔴 Browser not connected.';
+  }
+  console.log(message);
+}, 2 * 60 * 1000); // 2 minutes
+
+// Prevent Node from exiting
 process.stdin.resume();
