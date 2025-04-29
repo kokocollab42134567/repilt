@@ -2,32 +2,15 @@ const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const fs = require('fs');
 
-const EMAIL = 'kingdomsunion@gmail.com';
-const PASSWORD = 'wMN*yneq9HPksu$';
-const COOKIE_FILE = './cookies.json';
+const COOKIE_FILE = './cookies.json'; // We'll load this
 
 puppeteer.use(StealthPlugin());
 
 (async () => {
   console.log('🚀 Launching browser...');
 
-  const browser = await puppeteer.launch({
-    headless: "new",
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--disable-web-security',
-      '--proxy-server="direct://"',
-      '--proxy-bypass-list=*',
-      '--disable-background-timer-throttling',
-      '--disable-renderer-backgrounding',
-      '--disable-accelerated-2d-canvas',
-      '--single-process', // Important for weak devices
-      '--no-zygote',       // Important for weak devices
-    ],
-    defaultViewport: { width: 1280, height: 720 },
+  const browser = await puppeteer.connect({
+    browserWSEndpoint: 'wss://production-sfo.browserless.io/?token=SCtsRZKaUy9UsBe65e9925403d452f8a0f55a8129f&proxy=residential'
   });
 
   const page = await browser.newPage();
@@ -35,37 +18,34 @@ puppeteer.use(StealthPlugin());
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
 
   try {
-    console.log('🌐 Opening login page...');
-    await page.goto('https://replit.com/login', { waitUntil: 'domcontentloaded', timeout: 45000 });
-
-    console.log('✏️ Typing credentials...');
-    await page.type('input[name="username"]', EMAIL, { delay: 30 });
-    await page.type('input[name="password"]', PASSWORD, { delay: 30 });
-
-    console.log('🔓 Logging in...');
-    await Promise.all([
-      page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 45000 }),
-      page.click('[data-cy="log-in-btn"]')
-    ]);
-
-    console.log('✅ Logged in! Saving cookies...');
-    const cookies = await page.cookies();
-    fs.writeFileSync(COOKIE_FILE, JSON.stringify(cookies, null, 2));
-    console.log(`📁 Cookies saved to: ${COOKIE_FILE}`);
+    console.log('🍪 Loading cookies...');
+    if (fs.existsSync(COOKIE_FILE)) {
+      const cookies = JSON.parse(fs.readFileSync(COOKIE_FILE));
+      await page.setCookie(...cookies);
+      console.log('✅ Cookies loaded.');
+    } else {
+      throw new Error('Cookies file not found!');
+    }
 
     console.log('🔄 Navigating to project page...');
-    await page.goto('https://replit.com/@kingdomsunion/AromaticKeySyntax', { waitUntil: 'networkidle2', timeout: 60000 });
+    await page.goto('https://replit.com/@kingdomsunion/AromaticKeySyntax', {
+      waitUntil: 'networkidle2',
+      timeout: 60000
+    });
 
-    console.log('▶️ Waiting for "Run" button...');
-    await page.waitForSelector('button.useView_view__C2mnv.css-1qheakp', { timeout: 45000 });
+    const runButtonSelector = 'button.useView_view__C2mnv.css-1qheakp';
 
-    console.log('▶️ Clicking "Run" button...');
-    await page.click('button.useView_view__C2mnv.css-1qheakp');
+    console.log('🔍 Checking for "Run" button...');
+    try {
+      await page.waitForSelector(runButtonSelector, { timeout: 15000 });
+      console.log('▶️ Clicking "Run" button...');
+      await page.click(runButtonSelector);
+    } catch (e) {
+      console.log('ℹ️ "Run" button not found — assuming already running.');
+    }
 
-    console.log('✅ Script completed.');
-    // Optional: Close browser if you want
-    // await browser.close();
-
+    console.log('✅ Script setup complete. Keeping page open...');
+    await page.waitForSelector('body', { timeout: 0 }); // Keeps Puppeteer page open
   } catch (error) {
     console.error(`❌ Error: ${error.message}`);
     try {
@@ -78,3 +58,6 @@ puppeteer.use(StealthPlugin());
     }
   }
 })();
+
+// Prevent Node.js from exiting
+process.stdin.resume();
