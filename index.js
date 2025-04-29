@@ -65,45 +65,20 @@ async function launchBrowser() {
 // Start the Puppeteer automation
 launchBrowser();
 
-// Create HTTP server on port 3000
-const server = http.createServer(async (req, res) => {
-  if (req.url === '/') {
-    let status = '🔴 Browser is not open';
-    if (browser && page && !browser.isClosed()) {
-      try {
-        await page.title(); // Throws if disconnected
-        status = '🟢 Browser is connected and page is alive';
-      } catch (e) {
-        status = '🟠 Browser connected but page is unresponsive';
-      }
-    }
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end(`Browser status: ${status}\n`);
-  } else {
-    res.writeHead(404);
-    res.end('Not found');
-  }
+// Create HTTP server on port 8000
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('hi\n');
 });
 
 server.listen(8000, () => {
-  console.log('🌐 Status server running at http://localhost:3000');
+  console.log('🌐 Simple server running at http://localhost:8000');
 });
 
-// Self-check every 2 minutes
-setInterval(async () => {
-  let message = '[⏱ 2-min Check] ';
-  if (browser && page && !browser.isClosed()) {
-    try {
-      await page.title();
-      message += '🟢 Browser/page alive.';
-    } catch (e) {
-      message += '🟠 Browser connected but page unresponsive.';
-    }
-  } else {
-    message += '🔴 Browser not connected.';
-  }
-  console.log(message);
-}, 2 * 60 * 1000); // 2 minutes
+// Self-check every 2 minutes — just print "hi"
+setInterval(() => {
+  console.log('hi');
+}, 2 * 60 * 1000);
 
 // Prevent Node from exiting
 process.stdin.resume();
