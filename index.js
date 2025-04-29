@@ -1,26 +1,23 @@
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const fs = require('fs');
-const http = require('http');
 
-const COOKIE_FILE = './cookies.json';
+const COOKIE_FILE = './cookies.json'; // We'll load this
 
 puppeteer.use(StealthPlugin());
 
-let browser, page;
-
-async function launchBrowser() {
+(async () => {
   console.log('🚀 Launching browser...');
 
+  const browser = await puppeteer.connect({
+    browserWSEndpoint: 'wss://production-sfo.browserless.io/?token=SCtsRZKaUy9UsBe65e9925403d452f8a0f55a8129f&proxy=residential'
+  });
+
+  const page = await browser.newPage();
+
+  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+
   try {
-    browser = await puppeteer.connect({
-      browserWSEndpoint: 'wss://production-sfo.browserless.io/?token=SCtsRZKaUy9UsBe65e9925403d452f8a0f55a8129f&proxy=residential'
-    });
-
-    page = await browser.newPage();
-
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
-
     console.log('🍪 Loading cookies...');
     if (fs.existsSync(COOKIE_FILE)) {
       const cookies = JSON.parse(fs.readFileSync(COOKIE_FILE));
@@ -37,8 +34,8 @@ async function launchBrowser() {
     });
 
     const runButtonSelector = 'button.useView_view__C2mnv.css-1qheakp';
-    console.log('🔍 Checking for "Run" button...');
 
+    console.log('🔍 Checking for "Run" button...');
     try {
       await page.waitForSelector(runButtonSelector, { timeout: 15000 });
       console.log('▶️ Clicking "Run" button...');
@@ -48,44 +45,19 @@ async function launchBrowser() {
     }
 
     console.log('✅ Script setup complete. Keeping page open...');
-    await page.waitForSelector('body', { timeout: 0 });
-
+    await page.waitForSelector('body', { timeout: 0 }); // Keeps Puppeteer page open
   } catch (error) {
-    console.error('❌ Error in launchBrowser:', error);
-    if (page) {
-      try {
-        console.log(`📄 Page title: ${await page.title()}`);
-        console.log(`🌍 Page URL: ${page.url()}`);
-      } catch {
-        console.error('⚠️ Failed to fetch page info for debug.');
-      }
+    console.error(`❌ Error: ${error.message}`);
+    try {
+      const title = await page.title();
+      const url = page.url();
+      console.log(`📄 Page title: ${title}`);
+      console.log(`🌍 Page URL: ${url}`);
+    } catch (e) {
+      console.error('⚠️ Failed to fetch page info for debug.');
     }
-    process.exit(1); // Exit with error so Render knows it failed
   }
-}
+})();
 
-// Handle unhandled rejections globally
-process.on('unhandledRejection', (reason) => {
-  console.error('💥 Unhandled Promise Rejection:', reason);
-  process.exit(1);
-});
-
-
-// Create HTTP server on port 8000
-const server = http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('hi\n');
-});
-
-server.listen(8000, () => {
-  console.log('🌐 Simple server running at http://localhost:8000');
-});
-launchBrowser();
-
-// Self-check every 2 minutes — just print "hi"
-setInterval(() => {
-  console.log('hi');
-}, 2 * 60 * 1000);
-
-// Prevent Node from exiting
+// Prevent Node.js from exiting
 process.stdin.resume();
