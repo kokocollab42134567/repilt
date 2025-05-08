@@ -10,7 +10,7 @@ puppeteer.use(StealthPlugin());
   console.log('🚀 Launching browser...');
 
   const browser = await puppeteer.connect({
-    browserWSEndpoint: 'wss://production-sfo.browserless.io/?token=SCtsRZKaUy9UsBe65e9925403d452f8a0f55a8129f&proxy=residential'
+    browserWSEndpoint: 'wss://production-sfo.browserless.io/?token=2SH0mcnKNrPAcZLff4f4b31ecf142e257e9daab3c3481478e&proxy=residential'
   });
 
   const page = await browser.newPage();
